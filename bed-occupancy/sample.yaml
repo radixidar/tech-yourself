@@ -1,0 +1,133 @@
+esphome:
+  name: master-bed # EDIT as you wish
+  platform: ESP32
+  board: esp32doit-devkit-v1 # EDIT to suit your board
+  arduino_version: latest
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  password: ""
+
+wifi:
+  ssid: "" # EDIT for your wifi
+  password: "" # EDIT for your wifi
+  power_save_mode: none # Disabling power save mode is more reliable on my network. 
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Master Bed Fallback Hotspot" # EDIT as you wish
+    password: "" # EDIT as you wish
+
+captive_portal:
+    
+# These settings work well for me
+esp32_touch:
+  setup_mode: true # ATTENTION change to 'false' after setting pad thresholds
+  low_voltage_reference: 0.5V
+  high_voltage_reference: 2.4V
+  voltage_attenuation: 1.5V
+  iir_filter: 50ms
+  sleep_duration: 100ms
+
+# This section only required if using Voice Monkey & Alexa
+http_request:
+  useragent: esphome/device
+  timeout: 10s
+
+# Touch pads
+binary_sensor:
+   - platform: esp32_touch
+     name: "Worse Half Top" # EDIT as you wish
+     pin: GPIO14 # EDIT for pin used
+     threshold: 520 # EDIT based on the values from your pad
+     id: worse_half_top # EDIT as you wish
+     filters:
+      - delayed_on_off: 500ms # Used to 'debounce', prevents most rapid on/off cycles 
+
+   - platform: esp32_touch
+     name: "Worse Half Bottom" # EDIT as you wish
+     pin: GPIO12 # EDIT for pin used
+     threshold: 520 # EDIT based on the values from your pad
+     id: worse_half_bottom # EDIT as you wish
+     filters:
+      - delayed_on_off: 500ms # Used to 'debounce', prevents most rapid on/off cycles 
+
+   - platform: esp32_touch
+     name: "Better Half Top" # EDIT as you wish
+     pin: GPIO15 # EDIT for pin used
+     threshold: 600 # EDIT based on the values from your pad
+     id: better_half_top # EDIT as you wish
+     filters:
+      - delayed_on_off: 500ms # Used to 'debounce', prevents most rapid on/off cycles
+
+   - platform: esp32_touch
+     name: "Better Half Bottom" # EDIT as you wish
+     pin: GPIO13 # EDIT for pin used
+     threshold: 520 # EDIT based on the values from your pad
+     id: better_half_bottom # EDIT as you wish
+     filters:
+      - delayed_on_off: 500ms # Used to 'debounce', prevents most rapid on/off cycles 
+  
+  # Template sensors to combine multiple pads into one "sensor"
+   - platform: template
+     name: "Better Half"
+     lambda: |-
+       if (id(better_half_top).state ||
+           id(better_half_bottom).state) {
+         return true;
+       } else {
+         return false;
+       }
+     # 'on_press' and 'on_release' properties only required for Voice Monkey & Alexa. Delete if using Home Assistant.
+     on_press:
+       then:
+         - http_request.send:
+            method: GET
+            url: https://api.voicemonkey.io/trigger?access_token=YOUR_ACCESS_TOKEN_HERE&secret_token=YOUR_SECRET_TOKEN_HERE&monkey=YOUR-TRIGGER-HERE&announcement=YOUR-ANNOUNCEMENT-HERE
+            headers:
+              Content-Type: application/json
+            body: ""
+            verify_ssl: false
+     on_release:
+       then:
+         - http_request.send:
+            method: GET
+            url: https://api.voicemonkey.io/trigger?access_token=YOUR_ACCESS_TOKEN_HERE&secret_token=YOUR_SECRET_TOKEN_HERE&monkey=YOUR-TRIGGER-HERE&announcement=YOUR-ANNOUNCEMENT-HERE
+            headers:
+              Content-Type: application/json
+            body: ""
+            verify_ssl: false
+   - platform: template
+     name: "Worse Half"
+     lambda: |-
+       if (id(worse_half_top).state ||
+           id(worse_half_bottom).state) {
+         return true;
+       } else {
+         return false;
+       }
+     # 'on_press' section only required for Voice Monkey & Alexa
+     on_press:
+       then:
+         - http_request.send:
+            method: GET
+            url: https://api.voicemonkey.io/trigger?access_token=YOUR_ACCESS_TOKEN_HERE&secret_token=YOUR_SECRET_TOKEN_HERE&monkey=YOUR-TRIGGER-HERE&announcement=YOUR-ANNOUNCEMENT-HERE
+            headers:
+              Content-Type: application/json
+            body: ""
+            verify_ssl: false
+     on_release:
+       then:
+         - http_request.send:
+            method: GET
+            url: https://api.voicemonkey.io/trigger?access_token=YOUR_ACCESS_TOKEN_HERE&secret_token=YOUR_SECRET_TOKEN_HERE&monkey=YOUR-TRIGGER-HERE&announcement=YOUR-ANNOUNCEMENT-HERE
+            headers:
+              Content-Type: application/json
+            body: ""
+            verify_ssl: false
